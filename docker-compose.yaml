@@ -85,67 +85,74 @@ services:
     #     - "5432:5432"
 
   zookeeper:
-    image: wurstmeister/zookeeper
+    image: wurstmeister/zookeeper:latest
     container_name: zookeeper
-    restart: on-failure
     ports:
       - "2181:2181"
+
   kafka:
-    image: wurstmeister/kafka
+    image: wurstmeister/kafka:latest
     container_name: kafka
-    restart: on-failure
     ports:
       - "9092:9092"
+    hostname: kafka
     environment:
       KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
     depends_on:
       - zookeeper
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
 
   feedverse_authenticator_service:
-    build: ./Backend/feedverse-authenticator/authenticator/
+    build: ./../Backend/feedverse-authenticator/authenticator/
     depends_on:
       - keycloak
       # - neo4j
     ports:
-      - "8081:8008"
+      - "8084:8008"
     environment:
       # - NEO4J_URL=bolt://neo4j:7687
-      - SPRING_DATASOURCE_URL=jdbc:mysql://feedverse-post.cfzjlkfchdrk.us-east-2.rds.amazonaws.com/feedverse
-      - SPRING_DATASOURCE_USERNAME=admin
-      - SPRING_DATASOURCE_PASSWORD=yXDMxtW64hRBTAysECxf
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - KEYCLOAK_URL=http://keycloak:8080
 
   feedverse_user_service:
-    build: ./Backend/userservices/userservices
+    build: ./../Backend/userservices/userservices
     depends_on:
-      - keycloak
+      # - keycloak
       # - neo4j
       - kafka
+      - redis
     ports:
-      - "8082:8010"
+      - "8085:8010"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://feedverse-post.cfzjlkfchdrk.us-east-2.rds.amazonaws.com/feedverse
-      - SPRING_DATASOURCE_USERNAME=admin
-      - SPRING_DATASOURCE_PASSWORD=yXDMxtW64hRBTAysECxf
-      - KEYCLOAK_URL=http://keycloak:8080
-      - KEYCLOAK_AUTH=http://keycloak:8080/realms/feedverse/protocol/openid-connect/certs
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_REDIS_HOST=redis
+      # - KEYCLOAK_URL=http://keycloak:8080
+      # - KEYCLOAK_AUTH=http://keycloak:8080/realms/feedverse/protocol/openid-connect/certs
       - KAFKA_SERVER=kafka:9092
 
   posts_service:
-    build: ./Backend/posts/posts
+    build: ./../Backend/posts/posts
     container_name: feedverse_posts_service
     depends_on:
-      - keycloak
+      # - keycloak
       - kafka
     ports:
-      - "8083:8084"
+      - "8086:8084"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://feedverse-post.cfzjlkfchdrk.us-east-2.rds.amazonaws.com/feedverse
-      - SPRING_DATASOURCE_USERNAME=admin
-      - SPRING_DATASOURCE_PASSWORD=yXDMxtW64hRBTAysECxf
-      - KEYCLOAK_URL=http://keycloak:8080
-      - KEYCLOAK_AUTH=http://keycloak:8080/realms/feedverse/protocol/openid-connect/certs
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      # - KEYCLOAK_URL=http://keycloak:8080
+      # - KEYCLOAK_AUTH=http://keycloak:8080/realms/feedverse/protocol/openid-connect/certs
       - KAFKA_SERVER=kafka:9092
 volumes:
   mysql_data:
